@@ -1,0 +1,11 @@
+name,reason,risk_level
+Viktor Sokolov,Sanctioned individual - OFAC SDN List,HIGH
+Ahmed Al-Rashid,Politically Exposed Person - former minister,HIGH
+James Harrington,Matches flagged entity - financial fraud investigation,HIGH
+Maria Santos,Sanctioned individual - EU Consolidated List,HIGH
+Chen Wei,Politically Exposed Person - state official,HIGH
+Nikolai Petrov,Sanctioned individual - UK HMT List,HIGH
+Fatima Al-Zahra,Politically Exposed Person - linked to sanctioned regime,HIGH
+David Okonkwo,Matches flagged entity - money laundering investigation,HIGH
+Isabella Rossi,Sanctioned individual - OFAC SDN List,HIGH
+Ravi Kumar,Politically Exposed Person - government contractor,HIGH
