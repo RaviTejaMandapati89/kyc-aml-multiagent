@@ -170,8 +170,14 @@ Respond in this exact JSON format:
 # ── Run it ────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    customer_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        'data', 'customer.json'
-    )
-    result = run_kyc_assessment(customer_path)
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+    
+    customers = [
+        os.path.join(data_dir, 'customer.json'),
+        os.path.join(data_dir, 'medium_risk_customer.json'),
+        os.path.join(data_dir, 'low_risk_customer.json')
+    ]
+    
+    for customer_file in customers:
+        result = run_kyc_assessment(customer_file)
+        print("\n")

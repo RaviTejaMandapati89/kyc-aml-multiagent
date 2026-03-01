@@ -1,0 +1,13 @@
+{
+  "customer_id": "CUST-2026-002",
+  "full_name": "Sarah Johnson",
+  "date_of_birth": "1990-07-22",
+  "nationality": "British",
+  "address": "15 Canary Wharf, London, E14 5AB",
+  "id_document_type": "driving_licence",
+  "id_document_number": "SJ123",
+  "account_type": "personal",
+  "annual_income": 45000,
+  "employer": "Johnson Consulting",
+  "employer_registered": "2019-03-15"
+}

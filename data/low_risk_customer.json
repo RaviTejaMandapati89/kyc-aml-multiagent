@@ -1,0 +1,13 @@
+{
+  "customer_id": "CUST-2026-003",
+  "full_name": "Emma Williams",
+  "date_of_birth": "1985-11-30",
+  "nationality": "British",
+  "address": "8 Victoria Street, London, SW1H 0NW",
+  "id_document_type": "passport",
+  "id_document_number": "GBR-123456789012",
+  "account_type": "personal",
+  "annual_income": 62000,
+  "employer": "Williams & Partners Ltd",
+  "employer_registered": "2015-06-01"
+}
