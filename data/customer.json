@@ -1,0 +1,13 @@
+{
+  "customer_id": "CUST-2026-001",
+  "full_name": "James Harrington",
+  "date_of_birth": "1978-04-12",
+  "nationality": "British",
+  "address": "42 Kensington Gardens, London, W2 4BT",
+  "id_document_type": "passport",
+  "id_document_number": "GBR-490122887",
+  "account_type": "business",
+  "annual_income": 85000,
+  "employer": "Harrington Consulting Ltd",
+  "employer_registered": "2025-11-03"
+}

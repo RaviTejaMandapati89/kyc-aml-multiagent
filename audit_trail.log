@@ -1,0 +1,2 @@
+[2026-03-01T18:25:32.748598] EVENT: PEP_SCREENING_COMPLETE | DATA: {'customer_id': 'CUST-2026-001', 'pep_hit': True, 'risk_level': 'HIGH'}
+[2026-03-01T18:30:25.897864] EVENT: PEP_SCREENING_COMPLETE | DATA: {'customer_id': 'CUST-2026-001', 'pep_hit': True, 'risk_level': 'HIGH'}
