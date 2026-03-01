@@ -1,2 +1,7 @@
 [2026-03-01T18:25:32.748598] EVENT: PEP_SCREENING_COMPLETE | DATA: {'customer_id': 'CUST-2026-001', 'pep_hit': True, 'risk_level': 'HIGH'}
 [2026-03-01T18:30:25.897864] EVENT: PEP_SCREENING_COMPLETE | DATA: {'customer_id': 'CUST-2026-001', 'pep_hit': True, 'risk_level': 'HIGH'}
+[2026-03-01T21:37:35.659783] EVENT: INTAKE_COMPLETE | DATA: {'customer_id': 'CUST-2026-001'}
+[2026-03-01T21:37:35.660440] EVENT: DOCUMENT_VERIFICATION | DATA: {'customer_id': 'CUST-2026-001', 'result': {'doc_valid': True, 'reason': 'Document format valid'}}
+[2026-03-01T21:37:35.660738] EVENT: PEP_SCREENING | DATA: {'customer_id': 'CUST-2026-001', 'result': {'pep_hit': True, 'reason': 'Matches flagged entity - financial fraud investigation', 'risk_level': 'HIGH'}}
+[2026-03-01T21:37:35.660808] EVENT: RISK_SCORING | DATA: {'customer_id': 'CUST-2026-001', 'result': {'risk_tier': 'High', 'confidence': 0.95}}
+[2026-03-01T21:37:40.592064] EVENT: KYC_ASSESSMENT_COMPLETE | DATA: {'customer_id': 'CUST-2026-001', 'recommendation': 'ESCALATE', 'risk_tier': 'High'}
