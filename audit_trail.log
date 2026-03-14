@@ -60,3 +60,11 @@
 [2026-03-14T07:40:07.932661] EVENT: WORKFLOW_STARTED | DATA: {'customer_id': 'CUST-2026-001', 'recommendation': 'ESCALATE', 'sla_hours': 4}
 [2026-03-14T07:40:07.933839] EVENT: CASE_ESCALATED | DATA: {'customer_id': 'CUST-2026-001', 'team': 'Financial Crime Investigation Team', 'sar_required': True, 'red_flag_count': 6}
 [2026-03-14T07:40:07.936092] EVENT: WORKFLOW_COMPLETE | DATA: {'customer_id': 'CUST-2026-001', 'outcome': 'ESCALATED — Financial Crime Investigation Team assigned | SAR filing consideration required', 'sar_required': True}
+[2026-03-14T10:11:51.720141] EVENT: INTAKE_COMPLETE | DATA: {'customer_id': 'CUST-2026-DEMO'}
+[2026-03-14T10:11:51.721077] EVENT: DOCUMENT_VERIFICATION | DATA: {'customer_id': 'CUST-2026-DEMO', 'result': {'doc_valid': False, 'reason': 'Document number too short for passport'}}
+[2026-03-14T10:11:51.722263] EVENT: PEP_SCREENING | DATA: {'customer_id': 'CUST-2026-DEMO', 'result': {'pep_hit': False, 'reason': 'No match found on sanctions or PEP list', 'risk_level': 'NONE'}}
+[2026-03-14T10:11:51.722718] EVENT: RISK_SCORING | DATA: {'customer_id': 'CUST-2026-DEMO', 'result': {'risk_tier': 'Medium', 'confidence': 0.75}}
+[2026-03-14T10:12:03.524094] EVENT: KYC_ASSESSMENT_COMPLETE | DATA: {'customer_id': 'CUST-2026-DEMO', 'recommendation': 'ESCALATE', 'risk_tier': 'Medium'}
+[2026-03-14T10:12:08.064534] EVENT: WORKFLOW_STARTED | DATA: {'customer_id': 'CUST-2026-DEMO', 'recommendation': 'ESCALATE', 'sla_hours': 4}
+[2026-03-14T10:12:08.065500] EVENT: CASE_ESCALATED | DATA: {'customer_id': 'CUST-2026-DEMO', 'team': 'Financial Crime Investigation Team', 'sar_required': True, 'red_flag_count': 4}
+[2026-03-14T10:12:08.096086] EVENT: WORKFLOW_COMPLETE | DATA: {'customer_id': 'CUST-2026-DEMO', 'outcome': 'ESCALATED — Financial Crime Investigation Team assigned | SAR filing consideration required', 'sar_required': True}

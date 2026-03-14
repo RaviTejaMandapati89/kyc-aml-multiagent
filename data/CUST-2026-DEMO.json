@@ -1,0 +1,13 @@
+{
+  "customer_id": "CUST-2026-DEMO",
+  "full_name": "John Sample",
+  "date_of_birth": "1990-01-01",
+  "nationality": "British",
+  "address": "1 Demo Street, London, EC1A 1BB ",
+  "id_document_type": "passport",
+  "id_document_number": "SPEC0000000",
+  "account_type": "personal",
+  "annual_income": 55000,
+  "employer": "Sample Corporation Ltd",
+  "employer_registered": "2018-06-15"
+}
