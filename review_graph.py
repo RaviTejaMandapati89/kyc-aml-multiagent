@@ -2,7 +2,10 @@ import json
 import os
 from typing import TypedDict, Literal
 from langgraph.graph import StateGraph, END
-from tools.tools import audit_logger
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
+from tools import audit_logger
 
 
 # ── State definition ──────────────────────────────────────────────────────────

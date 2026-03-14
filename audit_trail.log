@@ -44,3 +44,19 @@
 [2026-03-14T07:15:54.159224] EVENT: WORKFLOW_STARTED | DATA: {'customer_id': 'CUST-2026-003', 'recommendation': 'ENHANCED REVIEW', 'sla_hours': 24}
 [2026-03-14T07:15:54.159427] EVENT: ENHANCED_REVIEW_INITIATED | DATA: {'customer_id': 'CUST-2026-003', 'documents_requested': ['Employment contract or payslips', '3 months bank statements', 'Companies House extract', 'Beneficial ownership declaration'], 'sla_hours': 24}
 [2026-03-14T07:15:54.159694] EVENT: WORKFLOW_COMPLETE | DATA: {'customer_id': 'CUST-2026-003', 'outcome': 'ENHANCED REVIEW — 4 documents requested', 'sar_required': False}
+[2026-03-14T07:38:51.757788] EVENT: INTAKE_COMPLETE | DATA: {'customer_id': 'CUST-2026-003'}
+[2026-03-14T07:38:51.759137] EVENT: DOCUMENT_VERIFICATION | DATA: {'customer_id': 'CUST-2026-003', 'result': {'doc_valid': True, 'reason': 'Document format valid'}}
+[2026-03-14T07:38:51.760113] EVENT: PEP_SCREENING | DATA: {'customer_id': 'CUST-2026-003', 'result': {'pep_hit': False, 'reason': 'No match found on sanctions or PEP list', 'risk_level': 'NONE'}}
+[2026-03-14T07:38:51.760316] EVENT: RISK_SCORING | DATA: {'customer_id': 'CUST-2026-003', 'result': {'risk_tier': 'Low', 'confidence': 0.9}}
+[2026-03-14T07:39:00.729585] EVENT: KYC_ASSESSMENT_COMPLETE | DATA: {'customer_id': 'CUST-2026-003', 'recommendation': 'ENHANCED REVIEW', 'risk_tier': 'Low'}
+[2026-03-14T07:39:06.085623] EVENT: WORKFLOW_STARTED | DATA: {'customer_id': 'CUST-2026-003', 'recommendation': 'ENHANCED REVIEW', 'sla_hours': 24}
+[2026-03-14T07:39:06.088109] EVENT: ENHANCED_REVIEW_INITIATED | DATA: {'customer_id': 'CUST-2026-003', 'documents_requested': ['3 months bank statements', 'Beneficial ownership declaration', 'Valid government-issued photo ID', 'Employment contract or payslips', 'Companies House extract'], 'sla_hours': 24}
+[2026-03-14T07:39:06.090096] EVENT: WORKFLOW_COMPLETE | DATA: {'customer_id': 'CUST-2026-003', 'outcome': 'ENHANCED REVIEW — 5 documents requested', 'sar_required': False}
+[2026-03-14T07:39:57.822880] EVENT: INTAKE_COMPLETE | DATA: {'customer_id': 'CUST-2026-001'}
+[2026-03-14T07:39:57.823978] EVENT: DOCUMENT_VERIFICATION | DATA: {'customer_id': 'CUST-2026-001', 'result': {'doc_valid': True, 'reason': 'Document format valid'}}
+[2026-03-14T07:39:57.824816] EVENT: PEP_SCREENING | DATA: {'customer_id': 'CUST-2026-001', 'result': {'pep_hit': True, 'reason': 'Matches flagged entity - financial fraud investigation', 'risk_level': 'HIGH'}}
+[2026-03-14T07:39:57.824919] EVENT: RISK_SCORING | DATA: {'customer_id': 'CUST-2026-001', 'result': {'risk_tier': 'High', 'confidence': 0.95}}
+[2026-03-14T07:40:02.522658] EVENT: KYC_ASSESSMENT_COMPLETE | DATA: {'customer_id': 'CUST-2026-001', 'recommendation': 'ESCALATE', 'risk_tier': 'High'}
+[2026-03-14T07:40:07.932661] EVENT: WORKFLOW_STARTED | DATA: {'customer_id': 'CUST-2026-001', 'recommendation': 'ESCALATE', 'sla_hours': 4}
+[2026-03-14T07:40:07.933839] EVENT: CASE_ESCALATED | DATA: {'customer_id': 'CUST-2026-001', 'team': 'Financial Crime Investigation Team', 'sar_required': True, 'red_flag_count': 6}
+[2026-03-14T07:40:07.936092] EVENT: WORKFLOW_COMPLETE | DATA: {'customer_id': 'CUST-2026-001', 'outcome': 'ESCALATED — Financial Crime Investigation Team assigned | SAR filing consideration required', 'sar_required': True}
