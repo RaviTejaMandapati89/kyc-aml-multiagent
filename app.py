@@ -16,10 +16,9 @@ st.set_page_config(
 )
 
 st.title("🏦 KYC/AML Multi-Agent Assessment Platform")
-st.markdown("*Powered by Google Gemini. AWS Bedrock Claude. LangGraph.*")
+st.markdown("*Powered by Google Vertex AI. AWS Bedrock Claude. LangGraph.*")
 st.divider()
 
-GEMINI_API_KEY = "REDACTED"
 
 tab1, tab2 = st.tabs(["🔍 KYC/AML Assessment", "📄 Document Verification"])
 
@@ -263,7 +262,7 @@ By proceeding you confirm the document contains no real PII.
 
             if analyse_button:
                 with st.spinner("Analysing document via Google Gemini Vision..."):
-                    result = run_document_check(uploaded_file, declared_type, GEMINI_API_KEY)
+                    result = run_document_check(uploaded_file, declared_type)
 
                 if result.get("blocked"):
                     st.error(f"🚫 **Blocked:** {result['block_reason']}")

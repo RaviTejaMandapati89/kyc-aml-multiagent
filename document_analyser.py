@@ -5,15 +5,27 @@ from PIL import Image
 import io
 from google import genai
 
+client = genai.Client(
+    vertexai=True,
+    project="kyc-aml-project-488918",
+    location="us-central1"
+)
+
 MODEL = "gemini-2.5-flash"
 
-def check_for_real_pii(image_bytes: bytes, client) -> dict:
+
+def check_for_real_pii(image_bytes: bytes) -> dict:
     image_b64 = base64.standard_b64encode(image_bytes).decode('utf-8')
-    prompt = """Look at this image carefully. Determine whether this image contains REAL personal information belonging to an actual person.
+    prompt = """Look at this image carefully. Determine whether this image 
+contains REAL personal information belonging to an actual person.
 
-Real PII includes: a real person's actual name, real date of birth, real address, real document number on an actual government-issued ID, real photograph of a person's face on an ID.
+Real PII includes: a real person's actual name, real date of birth, real address, 
+real document number on an actual government-issued ID, real photograph of a 
+person's face on an ID.
 
-Synthetic/safe content includes: clearly fake names like John Sample or Test User, placeholder numbers like XXXX-XXXX, watermarks saying SPECIMEN or SAMPLE or VOID, clearly digitally generated templates with no real data.
+Synthetic/safe content includes: clearly fake names like John Sample or Test 
+User, placeholder numbers like XXXX-XXXX, watermarks saying SPECIMEN or 
+SAMPLE or VOID, clearly digitally generated templates with no real data.
 
 Respond in this exact JSON format with no other text:
 {
@@ -33,8 +45,8 @@ Respond in this exact JSON format with no other text:
     raw = response.text.strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
+    if raw.startswith("json"):
+        raw = raw[4:]
     try:
         return json.loads(raw.strip())
     except json.JSONDecodeError:
@@ -45,12 +57,11 @@ Respond in this exact JSON format with no other text:
         }
 
 
-def analyse_document(image_bytes: bytes, declared_doc_type: str, client) -> dict:
+def analyse_document(image_bytes: bytes, declared_doc_type: str) -> dict:
     image_b64 = base64.standard_b64encode(image_bytes).decode('utf-8')
-
     prompt = f"""You are a document verification specialist at a UK bank.
-
 Analyse this identity document image and assess its validity.
+
 The customer declared this is a: {declared_doc_type}
 
 Check for the following:
@@ -85,9 +96,8 @@ Respond in this exact JSON format with no other text:
     raw = response.text.strip()
     if raw.startswith("```"):
         raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-
+    if raw.startswith("json"):
+        raw = raw[4:]
     try:
         result = json.loads(raw.strip())
         result["image_data_retained"] = False
@@ -101,9 +111,7 @@ Respond in this exact JSON format with no other text:
         }
 
 
-def run_document_check(uploaded_file, declared_doc_type: str, gemini_api_key: str) -> dict:
-    client = genai.Client(api_key=gemini_api_key)
-
+def run_document_check(uploaded_file, declared_doc_type: str) -> dict:
     image_bytes = uploaded_file.read()
 
     try:
@@ -118,7 +126,7 @@ def run_document_check(uploaded_file, declared_doc_type: str, gemini_api_key: st
 
     image_bytes = uploaded_file.getvalue()
 
-    pii_check = check_for_real_pii(image_bytes, client)
+    pii_check = check_for_real_pii(image_bytes)
     if pii_check.get("contains_real_pii") and pii_check.get("confidence", 0) > 0.7:
         return {
             "blocked": True,
@@ -127,7 +135,7 @@ def run_document_check(uploaded_file, declared_doc_type: str, gemini_api_key: st
             "image_data_retained": False
         }
 
-    analysis = analyse_document(image_bytes, declared_doc_type, client)
+    analysis = analyse_document(image_bytes, declared_doc_type)
     analysis["blocked"] = False
     del image_bytes
     return analysis

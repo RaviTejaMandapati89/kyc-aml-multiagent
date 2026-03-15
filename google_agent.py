@@ -3,7 +3,6 @@ import os
 import json
 from google import genai
 
-# ── Add tools folder to path so we can import our tools ──────────────────────
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
 from tools import (
     customer_intake,
@@ -14,31 +13,26 @@ from tools import (
     escalation_flagger
 )
 
-# ── Gemini client ─────────────────────────────────────────────────────────────
-GEMINI_API_KEY = "REDACTED"
-client = genai.Client(api_key=GEMINI_API_KEY)
-
-
-# ── Main agent function ───────────────────────────────────────────────────────
+client = genai.Client(
+    vertexai=True,
+    project="kyc-aml-project-488918",
+    location="us-central1"
+)
 
 def run_kyc_assessment(customer_file_path: str) -> dict:
     print("\n" + "=" * 60)
     print("KYC ASSESSMENT STARTING")
     print("=" * 60)
 
-    # Step 1 — Customer Intake
     print("\n[1/6] Running customer intake...")
     intake_result = customer_intake(customer_file_path)
-
     if intake_result["status"] == "incomplete":
         print(f"STOPPED: Missing fields — {intake_result['missing_fields']}")
         return {"status": "failed", "reason": "incomplete customer profile"}
-
     customer = intake_result["customer"]
     print(f"Customer loaded: {customer['full_name']} ({customer['customer_id']})")
     audit_logger("INTAKE_COMPLETE", {"customer_id": customer["customer_id"]})
 
-    # Step 2 — Document Verification
     print("\n[2/6] Verifying document...")
     doc_result = verify_document(
         doc_type=customer["id_document_type"],
@@ -50,7 +44,6 @@ def run_kyc_assessment(customer_file_path: str) -> dict:
         "result": doc_result
     })
 
-    # Step 3 — PEP Screening
     print("\n[3/6] Running PEP/sanctions screening...")
     pep_result = check_pep_sanctions(customer["full_name"])
     print(f"PEP check: {pep_result}")
@@ -59,7 +52,6 @@ def run_kyc_assessment(customer_file_path: str) -> dict:
         "result": pep_result
     })
 
-    # Step 4 — Risk Scoring
     print("\n[4/6] Calculating risk score...")
     risk_result = calculate_risk_score(
         pep_hit=pep_result["pep_hit"],
@@ -71,50 +63,45 @@ def run_kyc_assessment(customer_file_path: str) -> dict:
         "result": risk_result
     })
 
-    # Step 5 — Build context for Gemini reasoning
     print("\n[5/6] Sending to Gemini for AML reasoning...")
-    context = f"""
-You are an AML compliance analyst. Review this KYC assessment and provide a recommendation.
-
-Customer Profile:
-- Name: {customer['full_name']}
-- Nationality: {customer['nationality']}
-- Account Type: {customer['account_type']}
-- Annual Income: £{customer['annual_income']}
-- Employer: {customer['employer']}
-- Employer Registered: {customer['employer_registered']}
-
-Assessment Results:
-- Document Valid: {doc_result['doc_valid']} ({doc_result['reason']})
-- PEP/Sanctions Hit: {pep_result['pep_hit']} ({pep_result['reason']})
-- Risk Tier: {risk_result['risk_tier']} (confidence: {risk_result['confidence']})
-
-Based on these signals, provide:
-1. A one-sentence recommendation (APPROVE / ENHANCED REVIEW / ESCALATE)
-2. The key reason for your recommendation
-3. Any additional risk factors you notice in the profile
-
-Respond in this exact JSON format:
-{{
+    json_template = '''{
     "recommendation": "APPROVE or ENHANCED REVIEW or ESCALATE",
     "reason": "one sentence explanation",
     "additional_flags": "any other concerns or NONE",
-    "sla_hours": 72 for APPROVE, 24 for ENHANCED REVIEW, 4 for ESCALATE
-}}
-"""
+    "sla_hours": 72
+}'''
+
+    context = (
+        "You are an AML compliance analyst. Review this KYC assessment and provide a recommendation.\n\n"
+        "Customer Profile:\n"
+        f"- Name: {customer['full_name']}\n"
+        f"- Nationality: {customer['nationality']}\n"
+        f"- Account Type: {customer['account_type']}\n"
+        f"- Annual Income: £{customer['annual_income']}\n"
+        f"- Employer: {customer['employer']}\n"
+        f"- Employer Registered: {customer['employer_registered']}\n\n"
+        "Assessment Results:\n"
+        f"- Document Valid: {doc_result['doc_valid']} ({doc_result['reason']})\n"
+        f"- PEP/Sanctions Hit: {pep_result['pep_hit']} ({pep_result['reason']})\n"
+        f"- Risk Tier: {risk_result['risk_tier']} (confidence: {risk_result['confidence']})\n\n"
+        "Based on these signals, provide:\n"
+        "1. A one-sentence recommendation (APPROVE / ENHANCED REVIEW / ESCALATE)\n"
+        "2. The key reason for your recommendation\n"
+        "3. Any additional risk factors you notice in the profile\n\n"
+        f"Respond in this exact JSON format:\n{json_template}"
+    )
 
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=context
     )
 
-    # Parse Gemini response
     raw_text = response.text.strip()
     if raw_text.startswith("```"):
         raw_text = raw_text.split("```")[1]
-        if raw_text.startswith("json"):
-            raw_text = raw_text[4:]
-    
+    if raw_text.startswith("json"):
+        raw_text = raw_text[4:]
+
     try:
         gemini_assessment = json.loads(raw_text.strip())
     except json.JSONDecodeError:
@@ -128,7 +115,6 @@ Respond in this exact JSON format:
     print(f"Gemini recommendation: {gemini_assessment['recommendation']}")
     print(f"Reason: {gemini_assessment['reason']}")
 
-    # Step 6 — Escalation Check
     print("\n[6/6] Running escalation check...")
     escalation_result = escalation_flagger(
         risk_tier=risk_result["risk_tier"],
@@ -136,7 +122,6 @@ Respond in this exact JSON format:
     )
     print(f"Escalation: {escalation_result}")
 
-    # ── Final Assessment ──────────────────────────────────────────────────────
     final_assessment = {
         "customer_id": customer["customer_id"],
         "customer_name": customer["full_name"],
@@ -163,21 +148,20 @@ Respond in this exact JSON format:
     print("KYC ASSESSMENT COMPLETE")
     print("=" * 60)
     print(json.dumps(final_assessment, indent=2))
-
     return final_assessment
 
 
-# ── Run it ────────────────────────────────────────────────────────────────────
-
 if __name__ == "__main__":
+    print("MAIN BLOCK REACHED")
     data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
-    
+    print(f"Data dir: {data_dir}")
+
     customers = [
         os.path.join(data_dir, 'customer.json'),
         os.path.join(data_dir, 'medium_risk_customer.json'),
         os.path.join(data_dir, 'low_risk_customer.json')
     ]
-    
+
     for customer_file in customers:
         result = run_kyc_assessment(customer_file)
         print("\n")

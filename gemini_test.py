@@ -1,10 +1,13 @@
 from google import genai
 
-client = genai.Client(api_key="REDACTED")
+client = genai.Client(
+    vertexai=True,
+    project="kyc-aml-project-488918",
+    location="us-central1"
+)
 
 response = client.models.generate_content(
     model="gemini-2.5-flash",
-    contents="Reply with exactly this sentence and nothing else: Google Gemini connection successful."
+    contents="Say hello from Vertex AI"
 )
-
 print(response.text)
