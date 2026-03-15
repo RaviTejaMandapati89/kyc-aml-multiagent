@@ -20,7 +20,7 @@ st.markdown("*Powered by Google Vertex AI. AWS Bedrock Claude. LangGraph.*")
 st.divider()
 
 
-tab1, tab2 = st.tabs(["🔍 KYC/AML Assessment", "📄 Document Verification"])
+tab1, tab2, tab3 = st.tabs(["🔍 KYC/AML Assessment", "📄 Document Verification", "📊 Observability"])
 
 # ── Tab 1: Full KYC/AML Pipeline ──────────────────────────────────────────────
 
@@ -307,3 +307,83 @@ By proceeding you confirm the document contains no real PII.
 
     else:
         st.info("Please confirm the document contains no real personal data to proceed.")
+        # ── Tab 3: Observability ──────────────────────────────────────────────────────
+
+with tab3:
+    st.header("📊 Agent Observability Dashboard")
+    st.markdown("Real-time telemetry across the multi-agent pipeline.")
+    st.divider()
+
+    outputs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'outputs')
+    workflow_files = [f for f in os.listdir(outputs_dir) if f.endswith('_workflow.json')] if os.path.exists(outputs_dir) else []
+
+    if not workflow_files:
+        st.info("No workflow data yet. Run a KYC/AML assessment to populate the dashboard.")
+    else:
+        workflows = []
+        for wf in workflow_files:
+            with open(os.path.join(outputs_dir, wf)) as f:
+                try:
+                    workflows.append(json.load(f))
+                except json.JSONDecodeError:
+                    pass
+
+        total_cases = len(workflows)
+        escalated = sum(1 for w in workflows if w.get("aml_recommendation") == "ESCALATE")
+        enhanced = sum(1 for w in workflows if w.get("aml_recommendation") == "ENHANCED REVIEW")
+        approved = sum(1 for w in workflows if w.get("aml_recommendation") == "APPROVE")
+        sar_count = sum(1 for w in workflows if w.get("sar_required"))
+
+        st.subheader("Pipeline Summary")
+        col1, col2, col3, col4, col5 = st.columns(5)
+        col1.metric("Total Cases", total_cases)
+        col2.metric("Escalated", escalated, delta=None)
+        col3.metric("Enhanced Review", enhanced)
+        col4.metric("Approved", approved)
+        col5.metric("SAR Required", sar_count)
+
+        st.divider()
+
+        st.subheader("Recommendation Distribution")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("**By AML Agent (AWS Bedrock Claude)**")
+            aml_counts = {"ESCALATE": escalated, "ENHANCED REVIEW": enhanced, "APPROVE": approved}
+            for rec, count in aml_counts.items():
+                pct = int((count / total_cases) * 100) if total_cases > 0 else 0
+                bar = "█" * pct + "░" * (100 - pct)
+                st.markdown(f"`{rec}` — {count} cases ({pct}%)")
+                st.progress(pct / 100)
+
+        with col2:
+            st.markdown("**Team Routing**")
+            team_counts = {}
+            for w in workflows:
+                team = w.get("assigned_team", "Unknown")
+                team_counts[team] = team_counts.get(team, 0) + 1
+            for team, count in team_counts.items():
+                pct = int((count / total_cases) * 100) if total_cases > 0 else 0
+                st.markdown(f"`{team}` — {count} cases ({pct}%)")
+                st.progress(pct / 100)
+
+        st.divider()
+
+        st.subheader("Case Log")
+        for w in sorted(workflows, key=lambda x: x.get("customer_id", "")):
+            rec = w.get("aml_recommendation", "UNKNOWN")
+            outcome = w.get("review_outcome", "")
+            sar = "🔴 SAR" if w.get("sar_required") else ""
+            if rec == "ESCALATE":
+                st.error(f"🚨 **{w.get('customer_name', 'Unknown')}** ({w.get('customer_id', '')}) — {rec} — {outcome} {sar}")
+            elif rec == "ENHANCED REVIEW":
+                st.warning(f"⚠️ **{w.get('customer_name', 'Unknown')}** ({w.get('customer_id', '')}) — {rec} — {outcome}")
+            else:
+                st.success(f"✅ **{w.get('customer_name', 'Unknown')}** ({w.get('customer_id', '')}) — {rec} — {outcome}")
+
+            with st.expander(f"Audit trail — {w.get('customer_id', '')}"):
+                for i, entry in enumerate(w.get("audit_trail", []), 1):
+                    st.markdown(f"{i}. {entry}")
+
+        st.divider()
+        st.caption("Data sourced from outputs/ directory. Refresh page to update after new assessments.")
