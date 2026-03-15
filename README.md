@@ -48,14 +48,15 @@ Customer Profile (JSON)
 
 | Component | Technology |
 |---|---|
-| KYC Orchestration | Google Gemini 2.5 Flash via AI Studio API |
+| KYC Orchestration | Google Gemini 2.5 Flash via Vertex AI |
 | AML Reasoning | AWS Bedrock Claude Haiku 4.5 (eu-west-2) |
-| Document Vision | Google Gemini 2.5 Flash Vision |
+| Document Vision | Google Gemini 2.5 Flash Vision via Vertex AI |
 | Post-Decision Workflow | LangGraph |
 | Tool Protocol | MCP (Model Context Protocol) |
+| Agent Communication | A2A Protocol |
 | Frontend | Streamlit |
 | Language | Python 3.13 |
-| Cloud | Google Cloud + AWS (multi-cloud) |
+| Cloud | Google Cloud (Vertex AI) + AWS (multi-cloud) |
 
 ## Project Structure
 ```
@@ -63,6 +64,8 @@ kyc-aml-multiagent/
 ├── google_agent.py          # KYC orchestration via Gemini
 ├── aws_agent.py             # AML deep reasoning via Bedrock Claude
 ├── orchestrator.py          # Full pipeline — connects both agents
+├── orchestrator_a2a.py      # A2A protocol orchestrator
+├── a2a_server.py            # A2A HTTP server wrapping AWS agent
 ├── review_graph.py          # LangGraph post-decision workflow
 ├── mcp_server.py            # MCP server wrapping all 6 tools
 ├── document_analyser.py     # Gemini Vision document verification
@@ -91,6 +94,7 @@ kyc-aml-multiagent/
 | MCP server | ✅ Complete |
 | Gemini Vision document verification | ✅ Complete |
 | Streamlit UI with real-time input | ✅ Complete |
+| Observability dashboard — pipeline telemetry | ✅ Complete |
 
 ## Key Design Decisions
 
@@ -98,9 +102,12 @@ kyc-aml-multiagent/
 
 **Why LangGraph sits post-decision.** The AI pipeline produces a recommendation. LangGraph models what the bank does with that recommendation — routing it to the right team, generating document requests, triggering SAR consideration. This mirrors how real compliance workflows operate.
 
-**Why MCP for tools.** Direct Python imports work but MCP makes tools discoverable and callable by any agent dynamically. This is how production agentic platforms — including enterprise deployments — handle tool access.
+**Why MCP for tools.** Direct Python imports work but MCP makes tools discoverable and callable by any agent dynamically. This is fast becoming a standard across the industry for how production agentic platforms — including enterprise deployments — handle tool access.
+
+**Why A2A for agent communication.** A2A makes the handoff between agents explicit and inspectable. Each agent publishes a capability card. Tasks travel as structured messages. The receiving agent responds with a typed result. This is fast becoming an industry standard for how agent interoperability works across cloud boundaries in production.
 
 **Why Gemini for document vision.** Gemini 2.5 Flash has stronger image understanding than Claude Haiku. For document quality assessment — MRZ validation, tamper detection, field consistency — the better vision model produces more reliable results.
+
 
 ## Important
 
