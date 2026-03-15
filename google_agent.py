@@ -2,6 +2,7 @@ import sys
 import os
 import json
 from google import genai
+from observability import log_pipeline_event, log_pipeline_error, trace_agent_call
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tools'))
 from tools import (
@@ -19,6 +20,7 @@ client = genai.Client(
     location="us-central1"
 )
 
+@trace_agent_call("kyc-gemini-agent")
 def run_kyc_assessment(customer_file_path: str) -> dict:
     print("\n" + "=" * 60)
     print("KYC ASSESSMENT STARTING")
@@ -144,6 +146,13 @@ def run_kyc_assessment(customer_file_path: str) -> dict:
         "risk_tier": risk_result["risk_tier"]
     })
 
+    log_pipeline_event("KYC_COMPLETE", customer["customer_id"], {
+        "recommendation": gemini_assessment["recommendation"],
+        "risk_tier": risk_result["risk_tier"],
+        "pep_hit": pep_result["pep_hit"],
+        "document_valid": doc_result["doc_valid"]
+    })
+
     print("\n" + "=" * 60)
     print("KYC ASSESSMENT COMPLETE")
     print("=" * 60)
@@ -152,9 +161,7 @@ def run_kyc_assessment(customer_file_path: str) -> dict:
 
 
 if __name__ == "__main__":
-    print("MAIN BLOCK REACHED")
     data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
-    print(f"Data dir: {data_dir}")
 
     customers = [
         os.path.join(data_dir, 'customer.json'),

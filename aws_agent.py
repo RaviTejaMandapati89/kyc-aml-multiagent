@@ -2,14 +2,13 @@ import boto3
 import json
 import os
 import sys
+from observability import log_pipeline_event, log_pipeline_error, trace_agent_call
 
-# ── Bedrock client ────────────────────────────────────────────────────────────
 bedrock = boto3.client('bedrock-runtime', region_name='eu-west-2')
 MODEL_ID = 'eu.anthropic.claude-haiku-4-5-20251001-v1:0'
 
 
-# ── Main AML reasoning function ───────────────────────────────────────────────
-
+@trace_agent_call("aml-bedrock-agent")
 def run_aml_assessment(kyc_assessment: dict) -> dict:
     print("\n" + "=" * 60)
     print("AML DEEP REASONING — AWS BEDROCK")
@@ -18,7 +17,6 @@ def run_aml_assessment(kyc_assessment: dict) -> dict:
     print(f"Incoming recommendation: {kyc_assessment['gemini_recommendation']}")
     print(f"Risk tier: {kyc_assessment['risk_tier']}")
 
-    # Build the AML reasoning prompt
     prompt = f"""You are a senior AML compliance analyst at a UK bank regulated by the FCA.
 
 You have received a KYC pre-assessment for a customer and must provide a final AML determination.
@@ -55,19 +53,13 @@ Respond in this exact JSON format with no additional text:
         body=json.dumps({
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 1000,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
+            "messages": [{"role": "user", "content": prompt}]
         })
     )
 
     raw_response = json.loads(response['body'].read())
     raw_text = raw_response['content'][0]['text'].strip()
 
-    # Clean JSON if wrapped in code blocks
     if raw_text.startswith("```"):
         raw_text = raw_text.split("```")[1]
         if raw_text.startswith("json"):
@@ -85,7 +77,6 @@ Respond in this exact JSON format with no additional text:
             "sla_hours": 24
         }
 
-    # Build final combined output
     final_output = {
         "customer_id": kyc_assessment['customer_id'],
         "customer_name": kyc_assessment['customer_name'],
@@ -101,6 +92,13 @@ Respond in this exact JSON format with no additional text:
         "document_valid": kyc_assessment['document_valid']
     }
 
+    log_pipeline_event("AML_COMPLETE", kyc_assessment['customer_id'], {
+        "recommendation": aml_result['final_recommendation'],
+        "confidence": aml_result['confidence'],
+        "red_flag_count": len(aml_result['red_flags']),
+        "risk_tier": kyc_assessment['risk_tier']
+    })
+
     print(f"\nAML Final Recommendation: {aml_result['final_recommendation']}")
     print(f"Confidence: {aml_result['confidence']}")
     print(f"Rationale: {aml_result['aml_rationale']}")
@@ -115,15 +113,10 @@ Respond in this exact JSON format with no additional text:
     print("AML ASSESSMENT COMPLETE")
     print("=" * 60)
     print(json.dumps(final_output, indent=2))
-
     return final_output
 
 
-# ── Test with mock KYC assessments ────────────────────────────────────────────
-
 if __name__ == "__main__":
-
-    # Test Case 1 — High risk customer (James Harrington)
     high_risk_kyc = {
         "customer_id": "CUST-2026-001",
         "customer_name": "James Harrington",
@@ -140,7 +133,6 @@ if __name__ == "__main__":
         "escalation_priority": "URGENT"
     }
 
-    # Test Case 2 — Medium risk customer (Sarah Johnson)
     medium_risk_kyc = {
         "customer_id": "CUST-2026-002",
         "customer_name": "Sarah Johnson",
@@ -157,7 +149,6 @@ if __name__ == "__main__":
         "escalation_priority": "STANDARD"
     }
 
-    # Test Case 3 — Low risk customer (Emma Williams)
     low_risk_kyc = {
         "customer_id": "CUST-2026-003",
         "customer_name": "Emma Williams",
@@ -175,7 +166,6 @@ if __name__ == "__main__":
     }
 
     print("\nRunning AML assessment for all 3 customers...\n")
-
     result1 = run_aml_assessment(high_risk_kyc)
     print("\n\n")
     result2 = run_aml_assessment(medium_risk_kyc)
