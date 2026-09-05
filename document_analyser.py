@@ -36,10 +36,13 @@ Respond in this exact JSON format with no other text:
 
     response = client.models.generate_content(
         model=MODEL,
-        contents=[{"parts": [
-            {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}},
-            {"text": prompt}
-        ]}]
+        contents=[{
+            "role": "user",
+            "parts": [
+                {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}},
+                {"text": prompt}
+            ]
+        }]
     )
 
     raw = response.text.strip()
@@ -87,10 +90,13 @@ Respond in this exact JSON format with no other text:
 
     response = client.models.generate_content(
         model=MODEL,
-        contents=[{"parts": [
-            {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}},
-            {"text": prompt}
-        ]}]
+        contents=[{
+            "role": "user",
+            "parts": [
+                {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}},
+                {"text": prompt}
+            ]
+        }]
     )
 
     raw = response.text.strip()

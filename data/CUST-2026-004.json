@@ -1,0 +1,13 @@
+{
+  "customer_id": "CUST-2026-004",
+  "full_name": "Alex Chen",
+  "date_of_birth": "1985-03-22",
+  "nationality": "British",
+  "address": "45 Canary Wharf, London",
+  "id_document_type": "passport",
+  "id_document_number": "GBR-123456789012",
+  "account_type": "business",
+  "annual_income": 120000,
+  "employer": "Chen Capital Ltd",
+  "employer_registered": "2024-01-15"
+}
