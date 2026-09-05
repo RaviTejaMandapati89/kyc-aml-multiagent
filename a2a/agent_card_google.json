@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "agent_id": "kyc-orchestrator-gemini",
+  "name": "KYC Orchestration Agent",
+  "description": "Orchestrates KYC compliance screening using Google Gemini. Runs customer intake, document verification, PEP screening, risk scoring, audit logging and escalation flagging via MCP tools.",
+  "provider": {
+    "name": "Google Gemini",
+    "model": "gemini-2.5-flash",
+    "platform": "Google AI Studio"
+  },
+  "capabilities": [
+    "customer_intake",
+    "document_verification",
+    "pep_sanctions_screening",
+    "risk_scoring",
+    "audit_logging",
+    "escalation_flagging"
+  ],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "customer_file_path": {
+        "type": "string",
+        "description": "Path to customer JSON profile"
+      }
+    },
+    "required": ["customer_file_path"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "customer_id": {"type": "string"},
+      "customer_name": {"type": "string"},
+      "risk_tier": {"type": "string"},
+      "pep_hit": {"type": "boolean"},
+      "document_valid": {"type": "boolean"},
+      "gemini_recommendation": {"type": "string"},
+      "gemini_reason": {"type": "string"},
+      "confidence": {"type": "number"}
+    }
+  },
+  "handoff_targets": [
+    {
+      "agent_id": "aml-reasoning-claude",
+      "trigger": "always",
+      "endpoint": "http://localhost:5001/tasks"
+    }
+  ],
+  "endpoint": "http://localhost:5000/tasks"
+}

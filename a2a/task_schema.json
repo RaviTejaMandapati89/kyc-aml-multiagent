@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "task": {
+    "task_id": "string — unique UUID for this task",
+    "sender_agent_id": "string — agent_id of the sending agent",
+    "receiver_agent_id": "string — agent_id of the receiving agent",
+    "created_at": "ISO 8601 timestamp",
+    "status": "pending | running | completed | failed",
+    "payload": "object — input data matching receiver agent input_schema",
+    "result": "object — output data matching receiver agent output_schema or null if pending",
+    "error": "string — error message if status is failed or null"
+  }
+}

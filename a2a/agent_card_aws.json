@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "agent_id": "aml-reasoning-claude",
+  "name": "AML Deep Reasoning Agent",
+  "description": "Applies FCA-regulated AML compliance reasoning using AWS Bedrock Claude. Analyses KYC assessment output, identifies UK financial crime typologies, cites relevant legislation and produces compliance-grade rationale.",
+  "provider": {
+    "name": "AWS Bedrock",
+    "model": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "platform": "AWS Bedrock",
+    "region": "eu-west-2"
+  },
+  "capabilities": [
+    "aml_pattern_analysis",
+    "uk_financial_crime_typology_detection",
+    "fca_regulation_reasoning",
+    "sar_determination",
+    "compliance_rationale_generation"
+  ],
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "customer_id": {"type": "string"},
+      "customer_name": {"type": "string"},
+      "risk_tier": {"type": "string"},
+      "pep_hit": {"type": "boolean"},
+      "document_valid": {"type": "boolean"},
+      "gemini_recommendation": {"type": "string"},
+      "gemini_reason": {"type": "string"},
+      "confidence": {"type": "number"}
+    },
+    "required": ["customer_id", "gemini_recommendation", "risk_tier"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "aml_recommendation": {"type": "string"},
+      "aml_confidence": {"type": "number"},
+      "aml_rationale": {"type": "string"},
+      "red_flags": {"type": "array"},
+      "recommended_actions": {"type": "array"},
+      "sla_hours": {"type": "number"}
+    }
+  },
+  "endpoint": "http://localhost:5001/tasks"
+}
