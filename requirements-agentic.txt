@@ -1,0 +1,7 @@
+# Dependencies for the agentic tool layer.
+# Pin mcp<2: the 2.x release renamed the whole surface (FastMCP -> MCPServer)
+# and is sparsely documented; 1.x is the stable, canonical low-level API.
+mcp<2
+google-genai>=1.0
+# document_analyser.py also needs: pillow
+pillow>=10.0
