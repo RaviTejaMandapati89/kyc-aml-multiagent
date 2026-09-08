@@ -99,7 +99,12 @@ TOOLS: dict[str, dict[str, Any]] = {
     },
     "verify_document": {
         "fn": verify_document,
-        "description": "Deterministic format check of an ID document number for a declared type. Use the customer's id_document_type and id_document_number fields from customer_intake.",
+        "description": (
+            "Deterministic format check of an ID document number. Use the customer's "
+            "id_document_type and id_document_number from customer_intake. Returns status "
+            "'valid', 'invalid', or 'inconclusive'. Inconclusive means the format check "
+            "could not settle the question and a visual check of the document is needed."
+        ),
         "schema": {
             "type": "object",
             "properties": {
@@ -152,10 +157,9 @@ TOOLS: dict[str, dict[str, Any]] = {
         "fn": _analyse_id_document,
         "description": (
             "Vision analysis of an identity-document image for quality, apparent "
-            "authenticity and tamper indicators. Call this ONLY when the deterministic "
-            "verify_document check is inconclusive - e.g. the format passes but "
-            "authenticity is unconfirmed, or it fails in a way that may be a scan/format "
-            "artefact rather than a genuine problem. Accepts synthetic/specimen images only."
+            "authenticity and tamper indicators. Call this ONLY when verify_document "
+            "returned status 'inconclusive' and the customer record carries an "
+            "id_document_image path. Accepts synthetic/specimen images only."
         ),
         "schema": {
             "type": "object",

@@ -62,9 +62,12 @@ SYSTEM_INSTRUCTION = (
     "usually needs: load the customer (customer_intake), a document format check "
     "(verify_document), PEP/sanctions screening (check_pep_sanctions), a risk score "
     "(calculate_risk_score), and an escalation decision (escalation_flagger). Call "
-    "analyse_id_document ONLY when verify_document is inconclusive - for example the "
-    "format passes but authenticity is unconfirmed, or it fails in a way that could "
-    "be a scan artefact. You choose the order and whether each step is needed. When "
+    "analyse_id_document ONLY when verify_document returns status 'inconclusive' AND the "
+    "customer record carries an id_document_image path; pass that path as image_path. "
+    "If vision resolves the ambiguity, call calculate_risk_score again with the corrected "
+    "doc_valid so the risk tier reflects what you actually established. Do not call vision "
+    "when the format check is conclusively valid or invalid. You choose the order and "
+    "whether each step is needed. When "
     "you have enough evidence, STOP calling tools and reply with a single JSON object: "
     '{"recommendation":"APPROVE|ENHANCED REVIEW|ESCALATE","reason":"...",'
     '"risk_tier":"...","escalate":true|false,"additional_flags":"... or NONE",'

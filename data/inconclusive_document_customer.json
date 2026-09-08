@@ -1,0 +1,14 @@
+{
+  "customer_id": "CUST-2026-005",
+  "full_name": "Daniel Okonkwo",
+  "date_of_birth": "1982-09-14",
+  "nationality": "British",
+  "address": "23 Broad Street, Birmingham, B1 2HF",
+  "id_document_type": "passport",
+  "id_document_number": "GBR-4901O2887",
+  "id_document_image": "data/synthetic_passport_pass.jpg",
+  "account_type": "personal",
+  "annual_income": 54000,
+  "employer": "Okonkwo Design Ltd",
+  "employer_registered": "2017-02-20"
+}

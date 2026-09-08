@@ -132,7 +132,7 @@ streamlit run app.py                   # web interface
 | A2A orchestration pipeline | Complete |
 | LangGraph review workflow | Complete |
 | Gemini Vision document verification | Complete via the Streamlit upload tab |
-| Vision as a model-callable tool | Exposed and authorised, not yet exercised (see Known gaps) |
+| Vision as a model-callable tool | Complete, triggered by an inconclusive format check |
 | Streamlit UI with real-time input | Complete |
 | OpenTelemetry traces and logs to GCP | Complete |
 
@@ -150,6 +150,8 @@ streamlit run app.py                   # web interface
 
 **Facts from tools, judgement from the model.** The factual fields in a final assessment (PEP hit, document validity, confidence, escalation) are taken from recorded tool results, not from the model's restatement of them. The model contributes the recommendation and its reasoning. Downstream consumers never have to trust the model's summary of a deterministic check.
 
+**Why the format check has three states, not two.** `verify_document` returns `valid`, `invalid`, or `inconclusive`. A document number of the expected length whose body contains letters where digits belong is more likely a transcription or OCR artefact, a capital O read for a zero, than a forgery, and a length check cannot tell those apart. Rather than guess, the tool declines to decide, which is what gives the agent a principled reason to escalate to vision analysis. The boolean `doc_valid` is retained for callers that need one and is False when inconclusive, so an unresolved document fails closed rather than being silently approved.
+
 **Why mandatory auditing sits at the enforcement point.** The model may call `audit_logger` for business events, and does so inconsistently across runs. That is why the compliance-critical record does not depend on it: the enforcement point writes an entry for every tool call, authorised or denied, before the tool runs. A denied call is a security event and leaves a trace.
 
 **Why A2A for agent communication.** A2A makes the handoff between agents explicit and inspectable. Each agent publishes a capability card, tasks travel as structured messages, and the receiving agent responds with a typed result.
@@ -161,10 +163,6 @@ streamlit run app.py                   # web interface
 Kept here deliberately, because a prototype that overstates itself is worse than one that does not.
 
 **AWS Bedrock AML agent is currently unverified.** The code is complete and the A2A handoff passes it a well-formed payload, but the AWS credentials on the development machine have expired, so the Bedrock call cannot presently be exercised end to end. Running `orchestrator_a2a.py` reaches the AML stage and fails there on authentication.
-
-**Vision is not yet called by the agent in the pipeline.** `analyse_id_document` is exposed as the seventh MCP tool, is authorised by policy, and its argument conditions are covered by tests. But no customer record carries an image path, so the model has had no occasion to call it during a KYC run. Document vision does work today through the Streamlit upload tab, which calls `document_analyser` directly.
-
-**"Inconclusive" is defined in the prompt, not in the tool.** `verify_document` only performs a length check and returns a boolean, so the judgement about when to escalate to vision analysis lives in the system instruction. The better design has the deterministic tool return an explicit inconclusive state.
 
 **Tool discovery is not filtered per principal.** Execution is gated, so a caller is refused a tool it lacks a grant for. Discovery is not: every identity sees all seven tools when listing. Filtering the list per principal would be defence in depth on top of the control that matters.
 

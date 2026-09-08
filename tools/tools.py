@@ -1,6 +1,7 @@
 import csv
 import os
 import json
+import string
 import datetime
 
 # ── Tool 1: PEP / Sanctions Screening ────────────────────────────────────────
@@ -42,6 +43,19 @@ def calculate_risk_score(pep_hit: bool, doc_valid: bool) -> dict:
 # ── Tool 3: Document Verification ────────────────────────────────────────────
 
 def verify_document(doc_type: str, doc_number: str) -> dict:
+    """Deterministic format check on an identity document number.
+
+    Returns a three-state `status`, not just a boolean, because a format check
+    can genuinely fail to settle the question. A number of the right length whose
+    body contains letters where digits belong is more likely a scanning or
+    data-entry artefact (a capital O read for a zero, an I for a 1) than a
+    forgery, and a length check cannot tell those apart. Rather than guess, the
+    tool reports `inconclusive` and leaves the decision to a richer check.
+
+    `doc_valid` is retained for callers that need a boolean, and is False when
+    the status is inconclusive. That is deliberate: an unresolved document fails
+    closed, so a case that never gets a second look is not silently approved.
+    """
     valid_formats = {
         "passport": 12,
         "driving_licence": 8,
@@ -50,6 +64,7 @@ def verify_document(doc_type: str, doc_number: str) -> dict:
 
     if doc_type.lower() not in valid_formats:
         return {
+            "status": "invalid",
             "doc_valid": False,
             "reason": f"Unrecognised document type: {doc_type}"
         }
@@ -59,11 +74,30 @@ def verify_document(doc_type: str, doc_number: str) -> dict:
 
     if len(cleaned_number) < expected_length:
         return {
+            "status": "invalid",
             "doc_valid": False,
             "reason": f"Document number too short for {doc_type}"
         }
 
+    # Expected shape: an optional alphabetic prefix followed by a numeric body.
+    prefix_length = len(cleaned_number) - len(cleaned_number.lstrip(string.ascii_letters))
+    body = cleaned_number[prefix_length:]
+
+    if not body.isdigit():
+        return {
+            "status": "inconclusive",
+            "doc_valid": False,
+            "reason": (
+                f"Document number is the expected length but its body contains "
+                f"non-numeric characters. This is consistent with a transcription "
+                f"or OCR artefact rather than an invalid document. Format check "
+                f"cannot determine validity; visual inspection of the document "
+                f"image is required."
+            )
+        }
+
     return {
+        "status": "valid",
         "doc_valid": True,
         "reason": "Document format valid"
     }
