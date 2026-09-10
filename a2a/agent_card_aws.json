@@ -16,29 +16,85 @@
     "sar_determination",
     "compliance_rationale_generation"
   ],
+  "security": {
+    "scheme": "bearer_jwt",
+    "algorithm": "RS256",
+    "token_claims_required": [
+      "iss",
+      "aud",
+      "scope",
+      "exp",
+      "nbf",
+      "iat",
+      "jti",
+      "pbh"
+    ],
+    "audience": "aml-reasoning-claude",
+    "required_scope": "aml_assessment",
+    "payload_binding": "pbh is the SHA-256 of the canonical JSON request payload; a token is valid only for the body it was minted for",
+    "token_lifetime_seconds": 60,
+    "replay_protection": "jti is recorded until expiry; a token id is accepted once",
+    "public_key_discovery": "local file in this prototype; JWKS endpoint in production",
+    "unauthenticated_endpoints": [
+      "/health",
+      "/agent-card"
+    ]
+  },
   "input_schema": {
     "type": "object",
     "properties": {
-      "customer_id": {"type": "string"},
-      "customer_name": {"type": "string"},
-      "risk_tier": {"type": "string"},
-      "pep_hit": {"type": "boolean"},
-      "document_valid": {"type": "boolean"},
-      "gemini_recommendation": {"type": "string"},
-      "gemini_reason": {"type": "string"},
-      "confidence": {"type": "number"}
+      "customer_id": {
+        "type": "string"
+      },
+      "customer_name": {
+        "type": "string"
+      },
+      "risk_tier": {
+        "type": "string"
+      },
+      "pep_hit": {
+        "type": "boolean"
+      },
+      "document_valid": {
+        "type": "boolean"
+      },
+      "gemini_recommendation": {
+        "type": "string"
+      },
+      "gemini_reason": {
+        "type": "string"
+      },
+      "confidence": {
+        "type": "number"
+      }
     },
-    "required": ["customer_id", "gemini_recommendation", "risk_tier"]
+    "required": [
+      "customer_id",
+      "gemini_recommendation",
+      "risk_tier"
+    ]
   },
   "output_schema": {
     "type": "object",
     "properties": {
-      "aml_recommendation": {"type": "string"},
-      "aml_confidence": {"type": "number"},
-      "aml_rationale": {"type": "string"},
-      "red_flags": {"type": "array"},
-      "recommended_actions": {"type": "array"},
-      "sla_hours": {"type": "number"}
+      "aml_recommendation": {
+        "type": "string"
+      },
+      "aml_confidence": {
+        "type": "number"
+      },
+      "aml_rationale": {
+        "type": "string"
+      },
+      "red_flags": {
+        "type": "array"
+      },
+      "recommended_actions": {
+        "type": "array"
+      },
+      "sla_hours": {
+        "type": "number"
+      }
     }
   },
   "endpoint": "http://localhost:5001/tasks"

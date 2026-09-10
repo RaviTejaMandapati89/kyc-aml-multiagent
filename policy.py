@@ -71,6 +71,27 @@ class Decision:
 
 
 # ---------------------------------------------------------------------------
+# Agent registry
+# ---------------------------------------------------------------------------
+# Maps a cryptographically verified agent identity to the role policy reasons
+# about. Kept separate from the rules so that adding an agent does not mean
+# editing policy. In production this is the agent registry (at Lloyds, agents
+# registered on Backstage), and an agent absent from it has no role and is
+# therefore refused by default.
+AGENT_ROLES: dict[str, str] = {
+    "kyc-orchestrator-gemini": "kyc_orchestrator",
+}
+
+
+def principal_for_agent(agent_id: str) -> Principal:
+    """Build a Principal from a VERIFIED agent identity. An unregistered agent
+    gets a role that no rule grants anything to, so it is refused by default
+    rather than raising - denial is a policy outcome, not an error."""
+    return Principal(id=agent_id,
+                     role=AGENT_ROLES.get(agent_id, "unregistered_agent"))
+
+
+# ---------------------------------------------------------------------------
 # Policy content (the PAP - policy-as-data, not code)
 # ---------------------------------------------------------------------------
 # First rule that matches (role, tool) AND passes its conditions decides.
@@ -123,6 +144,28 @@ RULES: list[dict[str, Any]] = [
         "effect": "permit",
         "obligations": ["audit"],
     },
+    {
+        # Agent-to-agent delegation. The action namespace is prefixed 'a2a:' so
+        # one policy engine governs both boundaries: tool calls and agent calls
+        # are the same question (may this principal invoke this action?) asked
+        # about different resources.
+        #
+        # The condition enforces data minimisation: the KYC agent may hand the
+        # AML agent only the assessment fields, not the customer's full record.
+        # Attaching an address, income or document image is refused.
+        "id": "a2a-aml-delegation",
+        "roles": ["kyc_orchestrator"],
+        "tools": ["a2a:aml_assessment"],
+        "effect": "permit",
+        "conditions": [
+            {"arg": "payload", "op": "keys_within", "value": [
+                "customer_id", "customer_name", "document_valid", "pep_hit",
+                "pep_reason", "risk_tier", "confidence", "gemini_recommendation",
+                "gemini_reason", "additional_flags", "sla_hours",
+            ]},
+        ],
+        "obligations": ["audit"],
+    },
 ]
 
 
@@ -142,8 +185,19 @@ def _path_within(arg_value: Any, base_rel: str) -> bool:
     return target == base or target.startswith(base + os.sep)
 
 
+def _keys_within(arg_value: Any, allowed: list) -> bool:
+    """True iff a dict argument carries no keys outside the allowlist.
+    This enforces data minimisation at a delegation boundary: the receiving
+    agent gets the fields its task needs and nothing more, so a caller cannot
+    quietly widen what it forwards."""
+    if not isinstance(arg_value, dict):
+        return False
+    return set(arg_value.keys()) <= set(allowed)
+
+
 _CONDITION_OPS = {
     "path_within": _path_within,
+    "keys_within": _keys_within,
 }
 
 
@@ -208,6 +262,9 @@ if __name__ == "__main__":
         (kyc, "analyse_id_document", {"image_path": "../../etc/passwd", "declared_doc_type": "passport"}),
         (ro, "audit_logger", {"event": "X", "data": {}}),
         (kyc, "unknown_tool", {}),
+        (kyc, "a2a:aml_assessment", {"payload": {"customer_id": "C1", "risk_tier": "High"}}),
+        (kyc, "a2a:aml_assessment", {"payload": {"customer_id": "C1", "annual_income": 85000}}),
+        (principal_for_agent("some-other-agent"), "a2a:aml_assessment", {"payload": {}}),
     ]
     for p, t, a in cases:
         d = evaluate(p, t, a)

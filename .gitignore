@@ -4,3 +4,4 @@ __pycache__/
 google-cloud-sdk/
 *.log
 .venv/
+keys/

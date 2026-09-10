@@ -5,3 +5,5 @@ mcp<2
 google-genai>=1.0
 # document_analyser.py also needs: pillow
 pillow>=10.0
+# A2A workload identity (agent-to-agent authorisation)
+pyjwt[crypto]>=2.8
