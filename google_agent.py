@@ -19,8 +19,8 @@ pre-check below: it is advisory only, a way to avoid a round trip for a call the
 server would refuse anyway. The server remains the authority. Defence in depth,
 with a single source of truth for the decision (policy.py).
 
-Two decisions to be ready to defend
------------------------------------
+Two non-obvious decisions
+-------------------------
 1. Automatic function calling is DISABLED. The google-genai SDK will happily
    execute Python functions for you. We turn that off so that every tool call is
    forced through the MCP client and therefore through the PEP. Convenience that

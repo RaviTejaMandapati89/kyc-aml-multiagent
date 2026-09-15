@@ -1,7 +1,8 @@
 # Design notes: authorisation in an agentic system
 
 Why this system is built the way it is. Written to be read start to finish, and
-to answer "why did you do it that way?" for each decision.
+to record the reasoning behind each decision alongside the alternatives that were
+considered.
 
 ---
 
@@ -99,7 +100,7 @@ handler is the only path to any tool. That handler asks `policy.evaluate` before
 executing anything, and writes an audit entry for every attempt, allowed or
 denied, before the tool runs.
 
-### Decisions worth defending
+### Decisions and rationale
 
 **Enforcement lives with the resource, not the caller.** The agent also runs the
 policy check locally, but only to avoid a pointless round trip. If the agent's
@@ -188,7 +189,7 @@ sequenceDiagram
     end
 ```
 
-### Decisions worth defending
+### Decisions and rationale
 
 **Prove identity, don't read it.** The receiver derives identity from the
 verified token and ignores `sender_agent_id` in the body. That field is still
@@ -335,7 +336,7 @@ need no cloud credentials.
 
 ---
 
-## 8. Questions you are likely to be asked
+## 8. Design FAQ
 
 **"Isn't a JWT overkill for two local processes?"**
 For two local processes, yes. The interesting version of this system has many
@@ -387,7 +388,7 @@ prototype demonstrating governance that is the right trade; for a high-volume
 onboarding flow the policy decision would be cached and the vision path made
 asynchronous.
 
-**"What would you do differently with more time?"**
+**"What would a production version change?"**
 Filter tool discovery per principal, model delegation chains so a third agent
 inherits the context of the original case, move the replay cache to shared
 state, and add rate limiting. None of those change the architecture; they are

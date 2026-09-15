@@ -11,8 +11,8 @@ cannot bypass it. That is the reason to front local functions with a protocol
 server at all in a governance context: it gives you one inspectable boundary to
 police.
 
-Design notes worth defending
------------------------------
+Design notes
+------------
 * Default-deny is enforced here by delegating to policy.evaluate (the PDP).
   This file never decides policy; it only enforces the decision.
 * The principal (a non-human/workload identity) is bound when the server is
