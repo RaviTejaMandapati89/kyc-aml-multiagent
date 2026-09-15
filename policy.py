@@ -161,7 +161,7 @@ RULES: list[dict[str, Any]] = [
             {"arg": "payload", "op": "keys_within", "value": [
                 "customer_id", "customer_name", "document_valid", "pep_hit",
                 "pep_reason", "risk_tier", "confidence", "gemini_recommendation",
-                "gemini_reason", "additional_flags", "sla_hours",
+                "sla_hours",
             ]},
         ],
         "obligations": ["audit"],

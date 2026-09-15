@@ -1,0 +1,18 @@
+{
+  "customer_id": "CUST-2026-002",
+  "customer_name": "Sarah Johnson",
+  "aml_recommendation": "ENHANCED REVIEW",
+  "assigned_team": "Enhanced Due Diligence Team",
+  "review_outcome": "ENHANCED REVIEW \u2014 1 documents requested",
+  "sar_required": false,
+  "documents_requested": [
+    "Valid government-issued photo ID"
+  ],
+  "sla_hours": 24,
+  "audit_trail": [
+    "Workflow started for Sarah Johnson",
+    "Case routed to Enhanced Due Diligence Team",
+    "Documents requested: Valid government-issued photo ID",
+    "SLA: 24 hours for customer response"
+  ]
+}

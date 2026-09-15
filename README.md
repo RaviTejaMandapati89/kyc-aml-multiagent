@@ -1,197 +1,188 @@
 # KYC/AML Multi-Agent Compliance System
 
-A working prototype of an agentic compliance pipeline, built to answer a question that matters more as agents get autonomy: **when a model decides which tools to call and which agents to delegate to, what stops it doing something it shouldn't?**
-
-Two AI agents across two clouds screen a customer for KYC and AML risk. Every tool call and every agent-to-agent handoff passes an authorisation check before it executes. Synthetic data only.
-
----
+A multi-agent AI prototype for KYC and AML compliance screening, built to develop hands-on experience with agentic AI architectures. Not production software, a working prototype using synthetic data only.
 
 ## What it does
 
-A customer profile goes through four stages:
+Takes a customer profile through a four-stage compliance pipeline:
 
-**1. KYC screening.** Google Gemini runs a tool-calling loop against an MCP server hosting seven compliance tools. The model chooses which tools to call, in what order, and when it has enough to stop. Every call is authorised at the server before it executes, and audited whether it is allowed or refused.
-
-**2. AML reasoning.** The KYC agent proves its identity with a signed token and delegates over A2A to Claude on AWS Bedrock, which applies FCA-regulated reasoning and cites UK legislation. In a recorded run this second agent overrode the first, escalating a case the KYC agent had marked for enhanced review, because a document validity failure is a control breach that clean sanctions screening cannot offset. Two models reaching different conclusions, with the reasoning recorded, is the argument for splitting them.
-
-**3. Post-decision workflow.** LangGraph routes the case to Standard Onboarding, Enhanced Due Diligence, or Financial Crime Investigation, triggers SAR consideration where required, and generates a document request list.
-
-**4. Document verification.** Gemini Vision analyses identity document images for quality, field consistency and tamper indicators, behind a guardrail that refuses images appearing to contain real personal data. The agent calls it only when the deterministic format check returns `inconclusive`.
-
----
+1. **KYC Screening** — Google Gemini runs a tool-calling loop against an MCP server hosting seven compliance tools (customer intake, document verification, PEP and sanctions screening, risk scoring, escalation, audit logging, and vision document analysis). The model chooses which tools to call and in what order. Every call is authorised at the server before it executes.
+2. **AML Deep Reasoning** — AWS Bedrock Claude receives the KYC output via A2A handoff and applies FCA-regulated compliance reasoning, citing UK legislation (POCA 2002, MLR 2017, FCA SYSC)
+3. **Post-Decision Workflow** — LangGraph routes the case to the right team (Standard Onboarding, Enhanced Due Diligence, or Financial Crime Investigation), triggers SAR consideration where required, and generates a document request list
+4. **Document Verification** — Gemini Vision analyses uploaded identity document images for quality, field consistency and tamper indicators, with a PII guardrail that refuses images appearing to contain real personal data
 
 ## Architecture
-
-Two boundaries, one policy engine.
-
 ```
-                    +---------------------------+
-                    |  google_agent.py          |
-                    |  KYC orchestrator         |
-                    |  Gemini tool-calling loop |
-                    +------+-------------+------+
-                           |             |
-        BOUNDARY 1         |             |         BOUNDARY 2
-        agent -> tool      |             |         agent -> agent
-        MCP over stdio     |             |         A2A over HTTP
-                           v             v
-              +-----------------+   +------------------+
-              | mcp_server.py   |   | a2a_server.py    |
-              | enforcement     |   | enforcement      |
-              +--------+--------+   +---------+--------+
-                       |                      |
-                       |  same decision call  |
-                       +----------+-----------+
-                                  v
-                       +---------------------+
-                       |  policy.py          |
-                       |  ABAC, default-deny |
-                       +---------------------+
-                                  |
-              +-------------------+------------------+
-              v                                      v
-      7 compliance tools                AWS Bedrock AML agent
-                                                     |
-                                                     v
-                                        LangGraph review workflow
-                                                     |
-                                                     v
-                                             Streamlit UI
-```
-
-`policy.py` decides. The two servers enforce. Rules are data, not code, which is the seam where a production system drops in OPA or Cedar.
-
----
-
-## Try it
-
-The authorisation layer runs with no cloud account and no setup:
-
-```bash
-pip install -r requirements-agentic.txt
-python3 policy.py                          # nine policy decisions
-python3 tests/test_authorisation.py        # tool boundary, over real MCP stdio
-python3 tests/test_a2a_authorisation.py    # agent boundary, nine attack cases
+Customer profile (JSON)
+        |
+        v
++----------------------------+     lists tools, receives schemas
+|  google_agent.py           | ------------------------------+
+|  Gemini tool-calling loop  |                               |
+|  (MCP client)              | <-- tool results -------------+
++-------------+--------------+
+              | every tool call (stdio, MCP protocol)
+              v
++----------------------------+
+|  mcp_server.py             |  <- Policy Enforcement Point (PEP)
+|  7 tools, one dispatch     |     calls policy.evaluate before any tool runs
+|  handler                   |     audits every attempt, allowed and denied
++-------------+--------------+
+              | permit                    ^
+              v                           | decision (permit/deny + obligations)
+   tools/tools.py (6 tools)      +--------+-------------------+
+   document_analyser.py (vision) |  policy.py                 |
+                                 |  Policy Decision Point     |
+                                 |  ABAC, default-deny        |
+                                 +----------------------------+
+              |
+              | A2A handoff
+              v
++----------------------------+
+|  AWS Bedrock Claude        |  <- AML deep reasoning
+|  aws_agent.py              |     FCA / POCA 2002 / MLR 2017
++-------------+--------------+
+              |
+              v
++----------------------------+
+|  LangGraph                 |  <- Post-decision workflow
+|  review_graph.py           |     Conditional routing, SAR detection
++-------------+--------------+
+              |
+              v
++----------------------------+
+|  Streamlit UI              |  <- Web interface
+|  app.py                    |     Customer input, document upload
++----------------------------+
 ```
 
-Twelve checks, about thirty seconds, no credentials required. The A2A tests generate ephemeral keys in memory.
-
-The full pipeline needs Google Cloud for Gemini and AWS for Bedrock:
-
-```bash
-gcloud auth application-default login
-python3 a2a_server.py           # terminal one
-python3 orchestrator_a2a.py     # terminal two
-streamlit run app.py            # web interface
-```
-
----
-
-## What the authorisation layer stops
-
-| Attempt | Control | Result |
-|---|---|---|
-| Call a tool the caller was never granted | Default-deny allowlist | Refused |
-| Read a document image from outside `data/` | Argument condition, resolved with `realpath` | Refused |
-| Reach the AML agent with no credential | Bearer token required | 401 |
-| Claim another agent's identity | RS256 signature checked against its public key | 401 |
-| Reuse a token found later in a log | 60-second expiry | 401 |
-| Keep a valid token, swap the customer data | Token bound to a hash of the payload | 401 |
-| Send the same token twice | Replay cache on token id | 401 |
-| Forward more customer data than the task needs | Data-minimisation rule in policy | 403 |
-| Take the A2A server offline to skip the boundary | No in-process fallback exists | Pipeline halts |
-
-Every attempt, permitted or refused, is written to the audit trail before the action runs.
-
----
-
-## Key design decisions
-
-Full reasoning, diagrams and the follow-up questions are in [DESIGN.md](DESIGN.md).
-
-**Two agents, two clouds.** Gemini handles tool coordination and screening. Claude handles regulatory reasoning, producing more structured, legislation-aware rationale. Splitting them means the second agent can disagree with the first, and that disagreement is recorded rather than averaged away.
-
-**MCP for tools.** Six Python functions in one process do not need a protocol, and at this size it is overhead. What it buys is a single inspectable boundary that every tool call must cross, whichever agent is calling, plus schema-based discovery so the model selects tools rather than the control flow being hard-coded.
-
-**Enforcement lives with the resource.** `policy.py` decides; the MCP server and the A2A server enforce. The authoritative check runs next to the thing being protected, because an agent cannot be trusted to police itself. The agent runs the same policy locally, but only to skip a doomed round trip.
-
-**Default is deny.** A tool or action with no matching rule is refused. Add an eighth tool and forget the rule, and it is inert rather than open.
-
-**Attributes, not just roles.** The vision tool's rule constrains its arguments as well as its caller. The delegation rule permits only the assessment fields to cross to the AML agent, so a caller cannot quietly widen what it forwards. Permitted calls carry obligations, such as a mandatory PII scan and no image retention, which enforcement actions rather than recommends.
-
-**Identity is proved, not asserted.** The A2A endpoint used to read the caller's name from a field in the request body. Callers now present a short-lived RS256-signed token bound to a hash of the payload; the receiver derives identity from the verified token and ignores the body. Asymmetric signing means the receiver holds only a public key and cannot mint tokens impersonating the sender.
-
-**A tool-calling loop, not a script.** Gemini receives the tool schemas and decides the sequence. The SDK's automatic function calling is disabled so no call can bypass enforcement, and a step budget bounds the loop.
-
-**Facts from tools, judgement from the model.** Factual fields in an assessment come from recorded tool results, not from the model's restatement of them. The model contributes the recommendation and reasoning. The tool trace shows what it actually called.
-
-**Mandatory auditing sits at the enforcement point.** The model may call the audit tool for business events and does so inconsistently. The compliance record does not depend on it: enforcement writes an entry for every call before the call runs.
-
-**The pipeline fails closed.** If the AML agent is unreachable, the pipeline halts rather than calling it in-process. The fallback that used to exist bypassed the token, the policy check and the audit entry whenever the network failed. Losing availability is the accepted cost of not producing an unauthorised compliance decision.
-
----
-
-## Prototype scope
-
-A prototype, and a few things are deliberately simpler than production would require.
-
-**Identity binding.** Over stdio the calling principal is passed in the spawn environment; over A2A, keys are generated locally with no rotation. In production both would come from the platform: a workload identity token or an OAuth 2.1 client-credentials grant, with public keys discovered through JWKS. The enforcement code would not change, only how the principal is resolved.
-
-**Replay protection is in-process,** so it does not survive a restart or work across replicas. Production needs shared state.
-
-**Discovery is not filtered per principal.** Execution is gated; listing is not, so every identity sees all seven tools.
-
-**Delegation chains are not modelled.** If the AML agent called a third agent, nothing would carry the fact that it is acting on behalf of the original case.
-
-**Model-driven control flow costs latency.** A standard assessment takes eight to ten seconds against two for the old fixed pipeline, and one that escalates to vision analysis takes around fifty-five. For a high-volume onboarding flow the policy decision would be cached and the vision path made asynchronous.
-
----
-
-## Tech stack
+## Tech Stack
 
 | Component | Technology |
 |---|---|
-| KYC orchestration | Google Gemini 2.5 Flash via Vertex AI |
-| AML reasoning | AWS Bedrock Claude Haiku 4.5 (eu-west-2) |
-| Document vision | Google Gemini 2.5 Flash Vision |
-| Post-decision workflow | LangGraph |
-| Tool protocol | MCP, official `mcp` SDK, stdio transport |
-| Agent protocol | A2A over HTTP, with capability cards |
-| Authorisation | ABAC, default-deny, one decision point across both boundaries |
-| Agent identity | RS256-signed workload tokens, payload-bound, replay-protected |
+| KYC Orchestration | Google Gemini 2.5 Flash via Vertex AI |
+| AML Reasoning | AWS Bedrock Claude Haiku 4.5 (eu-west-2) |
+| Document Vision | Google Gemini 2.5 Flash Vision via Vertex AI |
+| Post-Decision Workflow | LangGraph |
+| Tool Protocol | MCP (Model Context Protocol), official `mcp` SDK, stdio transport |
+| Authorisation | Attribute-based access control, default-deny, one PDP governing both the tool and agent boundaries |
+| Agent Identity | RS256-signed workload identity tokens, payload-bound, replay-protected |
+| Agent Communication | A2A Protocol |
 | Observability | OpenTelemetry traces and structured logs to Cloud Trace and Cloud Logging |
 | Frontend | Streamlit |
 | Language | Python 3.13 |
+| Cloud | Google Cloud (Vertex AI) + AWS (multi-cloud) |
 
----
-
-## Project structure
-
+## Project Structure
 ```
 kyc-aml-multiagent/
 ├── google_agent.py          # KYC tool-calling loop, MCP client
-├── mcp_server.py            # MCP server over stdio, enforcement point
-├── policy.py                # Policy decision point, ABAC with default-deny
-├── a2a_identity.py          # Workload identity for the agent boundary
-├── a2a_server.py            # A2A task server, enforcement point
-├── aws_agent.py             # AML reasoning via Bedrock Claude
-├── orchestrator_a2a.py      # Full pipeline over A2A
+├── mcp_server.py            # MCP server over stdio, Policy Enforcement Point
+├── policy.py                # Policy Decision Point, ABAC with default-deny
+├── aws_agent.py             # AML deep reasoning via Bedrock Claude
+├── orchestrator.py          # Full pipeline, connects both agents
+├── orchestrator_a2a.py      # A2A protocol orchestrator
+├── a2a_server.py            # A2A HTTP server, Policy Enforcement Point #2
+├── a2a_identity.py          # Workload identity for the agent-to-agent boundary
 ├── review_graph.py          # LangGraph post-decision workflow
 ├── document_analyser.py     # Gemini Vision document verification
 ├── observability.py         # OpenTelemetry tracing and structured logging
 ├── app.py                   # Streamlit UI
-├── DESIGN.md                # Why the authorisation layer is built this way
 ├── tests/
-│   ├── test_authorisation.py        # tool boundary, over real MCP
-│   └── test_a2a_authorisation.py    # agent boundary, nine attack cases
-├── tools/tools.py           # 6 compliance tools
-└── data/                    # synthetic profiles, mock watchlist, specimen images
+│   ├── test_authorisation.py        # Proves the tool boundary over real MCP
+│   └── test_a2a_authorisation.py    # Proves the agent boundary, 9 attack cases
+├── tools/
+│   └── tools.py             # 6 compliance tools
+├── data/
+│   ├── customer.json                # High risk test profile
+│   ├── medium_risk_customer.json    # Medium risk test profile
+│   ├── low_risk_customer.json       # Low risk test profile
+│   ├── CUST-2026-DEMO.json          # Demo profile
+│   ├── pep_sanctions_list.csv       # Mock watchlist
+│   ├── specimen_passport.jpg        # Synthetic test document
+│   └── synthetic_passport_pass.jpg  # Synthetic test document
+└── outputs/                         # Decision JSON files (gitignored)
 ```
 
----
+## Running it
+
+The authorisation layer runs with no cloud credentials at all:
+
+```
+pip install -r requirements-agentic.txt
+python3 policy.py                      # policy decisions, six cases
+python3 tests/test_authorisation.py        # tool boundary, over real MCP stdio
+python3 tests/test_a2a_authorisation.py    # agent boundary, 9 attack cases
+```
+
+The full pipeline needs Google Cloud credentials for Gemini and AWS credentials for Bedrock:
+
+```
+gcloud auth application-default login
+python3 google_agent.py                # KYC agent alone
+python3 orchestrator_a2a.py            # full pipeline with A2A handoff
+streamlit run app.py                   # web interface
+```
+
+## Build Progress
+
+| Component | Status |
+|---|---|
+| Tool layer, 6 compliance tools | Complete |
+| MCP server, 7 tools over stdio | Complete |
+| Tool authorisation, PDP/PEP, default-deny | Complete, covered by tests |
+| Google Gemini KYC agent as tool-calling loop | Complete |
+| AWS Bedrock AML agent | Complete, verified end to end over A2A |
+| A2A orchestration pipeline | Complete |
+| A2A authorisation (signed workload identity) | Complete, covered by tests |
+| LangGraph review workflow | Complete |
+| Gemini Vision document verification | Complete via the Streamlit upload tab |
+| Vision as a model-callable tool | Complete, triggered by an inconclusive format check |
+| Streamlit UI with real-time input | Complete |
+| OpenTelemetry traces and logs to GCP | Complete |
+
+## Key Design Decisions
+
+Full reasoning, diagrams and the likely follow-up questions are in [DESIGN.md](DESIGN.md).
+
+**Why two agents instead of one.** The pipeline runs across two clouds: Gemini on Google Vertex AI performs KYC screening, then delegates over A2A to Claude on AWS Bedrock for AML reasoning. In a verified run the second agent overrode the first, escalating a case the KYC agent had marked for enhanced review, on the grounds that a document validity failure is a control breach that clean sanctions screening cannot offset. Two models reaching different conclusions, with the second one's reasoning recorded, is the argument for the split. Separating KYC orchestration from AML reasoning creates a cleaner separation of concerns. Gemini handles tool coordination and initial screening. Claude handles regulatory reasoning, producing more structured, legislation-aware compliance rationale.
+
+**Why MCP for tools.** Direct Python imports work fine for a single process, and for a project this size an MCP server is overhead. What it buys in a governance context is one inspectable boundary that every tool call must cross, whichever agent is calling. That boundary is where authorisation is enforced. MCP also makes tools discoverable over the wire, so the model selects them from their schemas rather than the control flow being hard-coded. The payoff is real at multi-agent scale; this implementation demonstrates the pattern.
+
+**Why authorisation is enforced server-side.** `policy.py` is the Policy Decision Point. The MCP server's dispatch handler is the Policy Enforcement Point. The authoritative check runs in the server, next to the tools, because an agent cannot be trusted to police itself: a buggy or compromised client that requests a disallowed tool is refused by the resource. The agent runs the same policy client-side, but only as an optimisation to skip a doomed round trip. The default is deny, so a tool never explicitly granted is refused rather than silently allowed, which is the safe failure mode for sanctions screening and identity documents. Policy rules are data, not code, which is the seam where a production system would drop in OPA or Cedar.
+
+**Why authorisation is attribute-based, not just role-based.** The vision tool's rule constrains its arguments as well as its caller: an image path must resolve inside `data/`, checked with `realpath` so `../` sequences and symlinks cannot escape. Authorisation depends on what is being touched, not only who is asking. Permitted calls also carry obligations, such as a mandatory PII scan and no image retention, which the enforcement point actions rather than merely recommends.
+
+**Why the KYC stage is a tool-calling loop, not a script.** The previous version was a fixed six-step pipeline with a single model call at the end, which is a workflow rather than an agent. Gemini now receives the tool schemas and chooses which tools to call, in what order, and when to stop. Automatic function calling is disabled in the SDK so that no call can bypass the enforcement point, and a step budget bounds the loop. The tool trace in each assessment records what the model actually did. This is a single bounded agent, not autonomous multi-agent orchestration.
+
+**Facts from tools, judgement from the model.** The factual fields in a final assessment (PEP hit, document validity, confidence, escalation) are taken from recorded tool results, not from the model's restatement of them. The model contributes the recommendation and its reasoning. Downstream consumers never have to trust the model's summary of a deterministic check.
+
+**Why the format check has three states, not two.** `verify_document` returns `valid`, `invalid`, or `inconclusive`. A document number of the expected length whose body contains letters where digits belong is more likely a transcription or OCR artefact, a capital O read for a zero, than a forgery, and a length check cannot tell those apart. Rather than guess, the tool declines to decide, which is what gives the agent a principled reason to escalate to vision analysis. The boolean `doc_valid` is retained for callers that need one and is False when inconclusive, so an unresolved document fails closed rather than being silently approved.
+
+**Why mandatory auditing sits at the enforcement point.** The model may call `audit_logger` for business events, and does so inconsistently across runs. That is why the compliance-critical record does not depend on it: the enforcement point writes an entry for every tool call, authorised or denied, before the tool runs. A denied call is a security event and leaves a trace.
+
+**Why the agent-to-agent boundary is authorised too.** The task endpoint previously took the caller's identity from a field in the request body, so anything able to reach the port could claim to be the KYC orchestrator and have a compliance inference run on data it supplied. Callers now present a short-lived RS256-signed token bound to the request payload, and the receiver derives identity from the verified token rather than the body. The same `policy.py` decision function then governs the delegation, including a data-minimisation rule that permits only the assessment fields to cross the boundary. One policy engine, two enforcement points.
+
+**Why the pipeline halts instead of falling back.** If the AML agent is unreachable, the orchestrator stops rather than calling it in-process. The fallback that used to exist bypassed the token, the policy check and the audit entry whenever the server was down, which made a network error sufficient to disable the boundary. Losing availability is the accepted cost of not producing an unauthorised compliance decision.
+
+**Why A2A for agent communication.** A2A makes the handoff between agents explicit and inspectable. Each agent publishes a capability card, tasks travel as structured messages, and the receiving agent responds with a typed result.
+
+**Why Gemini for document vision.** Gemini 2.5 Flash has stronger image understanding than Claude Haiku for document quality assessment, tamper indicators and field consistency.
+
+## Known gaps
+
+Kept here deliberately, because a prototype that overstates itself is worse than one that does not.
+
+**Tool discovery is not filtered per principal.** Execution is gated, so a caller is refused a tool it lacks a grant for. Discovery is not: every identity sees all seven tools when listing. Filtering the list per principal would be defence in depth on top of the control that matters.
+
+**Identity binding over stdio is not a security boundary.** The calling principal is passed to the MCP server in its spawn environment, which is appropriate for a local prototype and nothing more. Over an authenticated HTTP transport the principal would be derived from a validated OAuth 2.1 access token or an mTLS client certificate. The enforcement code would not change, only how the principal is resolved.
+
+**A2A replay protection is in-process.** The token id cache does not survive a restart or work across replicas; production needs shared state. Keys are generated locally with no rotation or revocation, and delegation chains are not modelled.
+
+**Model-driven control flow costs latency.** A KYC assessment now takes roughly eight to ten seconds instead of two, because the loop makes five to ten model round trips where the old pipeline made one.
 
 ## Important
 
-Synthetic data only. Never use with real customer data or genuine identity documents. Not intended for production deployment.
+This system uses synthetic data only. Never use with real customer data or genuine identity documents. Not intended for production deployment.
 
 Built by Ravi Teja Mandapati. Working on agent platforms in financial services.

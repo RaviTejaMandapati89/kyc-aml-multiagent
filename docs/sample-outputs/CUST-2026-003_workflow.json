@@ -1,0 +1,15 @@
+{
+  "customer_id": "CUST-2026-003",
+  "customer_name": "Emma Williams",
+  "aml_recommendation": "APPROVE",
+  "assigned_team": "Standard Onboarding Team",
+  "review_outcome": "APPROVED \u2014 Account opening authorised",
+  "sar_required": false,
+  "documents_requested": [],
+  "sla_hours": 72,
+  "audit_trail": [
+    "Workflow started for Emma Williams",
+    "Case routed to Standard Onboarding Team",
+    "Account opening authorised \u2014 no further action required"
+  ]
+}

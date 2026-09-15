@@ -1,0 +1,18 @@
+{
+  "customer_id": "CUST-2026-001",
+  "customer_name": "James Harrington",
+  "aml_recommendation": "ESCALATE",
+  "assigned_team": "Financial Crime Investigation Team",
+  "review_outcome": "ESCALATED \u2014 Financial Crime Investigation Team assigned | SAR filing consideration required",
+  "sar_required": true,
+  "documents_requested": [],
+  "sla_hours": 4,
+  "audit_trail": [
+    "Workflow started for James Harrington",
+    "URGENT: Case escalated to Financial Crime Investigation Team",
+    "PEP hit: True",
+    "Red flags identified: 4",
+    "SAR filing under POCA 2002 \u2014 under consideration",
+    "Account opening SUSPENDED pending investigation"
+  ]
+}

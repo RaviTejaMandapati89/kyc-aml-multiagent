@@ -2,7 +2,7 @@ import sys
 import os
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from google_agent import run_kyc_assessment
@@ -88,10 +88,17 @@ def run_full_assessment(customer_file_path: str) -> dict:
         "risk_tier": kyc_result["risk_tier"],
         "confidence": kyc_result["confidence"],
         "gemini_recommendation": kyc_result["gemini_recommendation"],
-        "gemini_reason": kyc_result["gemini_reason"],
-        "additional_flags": kyc_result["additional_flags"],
         "sla_hours": kyc_result["sla_hours"]
     }
+    # gemini_reason and additional_flags are deliberately NOT forwarded. They
+    # are prose the KYC model writes fresh each run, and the AML agent was
+    # following their wording: a run whose reason happened to contain the word
+    # "escalate" produced an ESCALATE determination, while the same customer
+    # described as "requiring human review" came back as ENHANCED REVIEW. The
+    # AML agent now receives the deterministic tool findings and the KYC
+    # recommendation label, and forms its own judgement from those. This is the
+    # same rule applied at the earlier stage: facts from tools, judgement from
+    # the model, and one model's judgement is not another model's fact.
 
     # The AML stage runs only over A2A, and only if the delegation is authorised.
     #
@@ -152,16 +159,20 @@ def run_full_assessment(customer_file_path: str) -> dict:
         "customer_name": kyc_result["customer_name"],
         "aml_recommendation": aml_result.get("aml_recommendation", "UNKNOWN"),
         "risk_tier": kyc_result["risk_tier"],
-        "sla_hours": kyc_result["sla_hours"],
+        # The AML agent may shorten the SLA (4 hours on an escalation). That is
+        # the binding deadline, so the workflow and the saved case file must use
+        # it, not the KYC agent's default. Two artefacts from one run disagreeing
+        # on a deadline is a compliance problem in itself.
+        "sla_hours": aml_result.get("sla_hours", kyc_result["sla_hours"]),
         "pep_hit": kyc_result["pep_hit"],
         "red_flags": aml_result.get("red_flags", []),
-        "kyc_result": kyc_result,
-        "aml_result": aml_result,
-        "workflow_status": "pending",
-        "final_summary": "",
+        "document_valid": kyc_result["document_valid"],
+        "recommended_actions": aml_result.get("recommended_actions", []),
         "audit_trail": [],
         "assigned_team": "",
         "review_outcome": "",
+        "sar_required": False,
+        "workflow_complete": False,
         "documents_requested": []
     })
 
@@ -171,13 +182,22 @@ def run_full_assessment(customer_file_path: str) -> dict:
         "kyc_recommendation": kyc_result["gemini_recommendation"],
         "aml_recommendation": aml_result.get("aml_recommendation", "UNKNOWN"),
         "risk_tier": kyc_result["risk_tier"],
-        "sla_hours": kyc_result["sla_hours"],
+        "sla_hours": aml_result.get("sla_hours", kyc_result["sla_hours"]),
         "a2a_used": True,
         "a2a_task_id": task_result.get("task_id"),
-        "workflow_status": workflow_result.get("workflow_status"),
-        "final_summary": workflow_result.get("final_summary"),
-        "timestamp": datetime.utcnow().isoformat()
+        "workflow_status": "complete" if workflow_result.get("workflow_complete")
+                           else "incomplete",
+        "assigned_team": workflow_result.get("assigned_team"),
+        "review_outcome": workflow_result.get("review_outcome"),
+        "sar_required": workflow_result.get("sar_required"),
+        "documents_requested": workflow_result.get("documents_requested", []),
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+    # Surface any citation deviation the AML agent's validator recorded, so it
+    # is visible in the pipeline result and not only in that agent's output.
+    if aml_result.get("citation_warnings"):
+        final_output["citation_warnings"] = aml_result["citation_warnings"]
 
     print("\n" + "=" * 60)
     print("ORCHESTRATOR COMPLETE")
