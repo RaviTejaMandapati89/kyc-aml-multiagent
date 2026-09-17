@@ -15,7 +15,8 @@ same policy engine rather than by ad-hoc checks in two places.
 
 A second thesis runs alongside it, and most of the defects found while building
 this were violations of it: **facts come from tools, judgement comes from the
-model, and one model's judgement is never another model's fact.**
+model. One model's written reasoning is not an input to another model's
+decision.**
 
 ---
 
@@ -261,7 +262,8 @@ Financial Conduct Authority with the Basel Committee on Banking Supervision.
 That is not an instrument. In a compliance tool an invented citation is worse
 than none: it reads as authoritative and someone may act on it.
 
-Two controls, because a prompt instruction is guidance rather than enforcement.
+Two controls. The prompt alone was not enough, since the model had volunteered
+citations without being asked for them in the first place.
 The prompt now supplies the permitted instruments and forbids others, and the
 output is validated against that set, with anything outside it recorded on the
 result rather than passed through silently. The validator reports rather than
@@ -270,8 +272,8 @@ model produced one, and that signal is worth keeping.
 
 The first version of the validator was wrong. It flagged any capitalised token,
 which fired on the model's own decision labels ("ENHANCED REVIEW") and produced
-warnings on correct output. A control that raises false alarms trains people to
-ignore it, which is worse than having none. It now requires citation context: an
+warnings on correct output, which would have made the flag useless in review. It
+now requires citation context: an
 acronym next to words like "under", "pursuant to", "guidelines", "requirements".
 
 ### Non-deterministic determinations
@@ -341,7 +343,7 @@ need no cloud credentials.
 **"Isn't a JWT overkill for two local processes?"**
 For two local processes, yes. The interesting version of this system has many
 agents, some operated by other teams, and at that point "the caller told us who
-it was" is not a control. The pattern matters; the transport is incidental.
+it was" stops being sufficient. The transport is incidental to the pattern.
 
 **"Where do the keys come from?"**
 Generated locally on first run into a gitignored directory. No private key is
@@ -362,7 +364,8 @@ state, Redis or a uniqueness constraint on `jti`, is the production answer.
 
 **"You disabled the SDK's automatic function calling. Why make life harder?"**
 Because the convenient path executed tools without passing through the
-enforcement point. A control a library can silently route around is not a control.
+enforcement point, so the policy check and the audit entry would both have been
+skipped with no error raised.
 
 **"The model didn't always call the audit tool. Isn't that a compliance problem?"**
 It would be if the compliance record depended on it. It does not: the enforcement
@@ -372,7 +375,8 @@ point writes an entry for every call, authorised or denied, before the call runs
 The pipeline stops and reports which stage failed. It used to fall back to an
 in-process call, which bypassed authorisation whenever the server was
 unreachable. Availability is the real cost of failing closed, and the right
-trade for a compliance decision: no answer beats an unauthorised one.
+trade here, since an unauthorised determination would have to be withdrawn
+anyway.
 
 **"How do you know the citation control works?"**
 It caught the reference that prompted it, and it catches instruments it has
